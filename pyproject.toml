@@ -11,4 +11,7 @@ dependencies = [
     "pydantic>=2.10,<3",
     "pydantic-settings>=2.7,<3",
     "python-dotenv>=1.0,<2",
+    "prometheus-fastapi-instrumentator>=7.0",
+    "opentelemetry-distro>=0.48b0",
+    "opentelemetry-exporter-otlp>=1.27.0",
 ]

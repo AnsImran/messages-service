@@ -7,8 +7,11 @@ logs from sibling microservices (e.g. beetexting_token_service).
 """
 
 import logging
+import logging.handlers
+import os
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 
 class _UTCFormatter(logging.Formatter):
@@ -40,6 +43,17 @@ def setup_logging(level: str = "INFO", access_log_level: str = "INFO") -> None:
     root.setLevel(level)
     root.handlers.clear()
     root.addHandler(handler)
+
+    # Phase-2 observability: when WLS_LOG_FILE is set, also write to a
+    # rotating file so Promtail can tail it and ship to Loki.
+    file_path = os.environ.get("WLS_LOG_FILE")
+    if file_path:
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.handlers.RotatingFileHandler(
+            file_path, maxBytes=50 * 1024 * 1024, backupCount=5, encoding="utf-8",
+        )
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
