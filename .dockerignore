@@ -1,0 +1,48 @@
+# Keep build context minimal + never leak secrets.
+
+# ── Secrets ───────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+credentials/
+*.pem
+*.key
+
+# ── Python / uv ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.uv/
+
+# ── Tests / lint / coverage ───────────────────────────────────────────
+tests/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# ── Git / CI ──────────────────────────────────────────────────────────
+.git/
+.gitignore
+.github/
+
+# ── Editor / OS ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Docs / scratch ────────────────────────────────────────────────────
+docs/
+README.md
+scripts/
+temp/
+
+# ── Docker artefacts (not needed inside the image) ────────────────────
+Dockerfile
+.dockerignore
+docker-compose*.yml

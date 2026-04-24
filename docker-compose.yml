@@ -1,0 +1,29 @@
+# Production compose for the SMS microservice.
+#
+# Bring-up:  docker compose up -d       (pulls from GHCR)
+# Logs:      docker logs -f sms-service
+# Stop:      docker compose down
+
+services:
+  sms-service:
+    container_name: sms-service
+    # CI builds + pushes to this GHCR tag. `docker compose pull` resolves
+    # to it on the server. Build block retained as a fallback for local
+    # dev (no GHCR auth needed).
+    image: ghcr.io/ansimran/messages-service/sms-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8200:8200"   # Host-only — reachable from same machine, not from internet.
+    environment:
+      # Service talks to the sibling token broker by its docker-network
+      # hostname. Both need to share a network (see networks: below).
+      TOKEN_SERVICE_URL: http://beetexting-token-service:8100/api/v1/token
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8200/api/v1/ping', timeout=3).status == 200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
