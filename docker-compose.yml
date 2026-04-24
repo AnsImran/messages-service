@@ -15,8 +15,9 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8200:8200"   # Host-only — reachable from same machine, not from internet.
+    # No host port published — sms-service is only reached via Docker DNS
+    # from the notification system and Prometheus on observability-net.
+    # (create-ticket currently squats on host port 8200; leave it alone.)
     environment:
       # Service talks to the sibling token broker by its docker-network
       # hostname. Both need to share a network (see networks: below).
