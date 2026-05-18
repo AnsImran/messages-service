@@ -50,6 +50,17 @@ class BeetextingProviderError(SmsServiceError):
         super().__init__(message=message, status_code=502)
 
 
+class BatchNotFoundError(SmsServiceError):
+    """Raised when a status lookup references a batch_id that does not exist.
+
+    Rendered as a 404 by the shared ``SmsServiceError`` handler, so no extra
+    handler wiring is needed.
+    """
+
+    def __init__(self, message: str = "Batch not found."):
+        super().__init__(message=message, status_code=404)
+
+
 # ── FastAPI error handlers ──────────────────────────────────────────────────
 
 

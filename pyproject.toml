@@ -11,6 +11,11 @@ dependencies = [
     "pydantic>=2.10,<3",
     "pydantic-settings>=2.7,<3",
     "python-dotenv>=1.0,<2",
+    # Async SQLite for the durable, paced SMS batch queue. Pure-Python thin
+    # wrapper over stdlib sqlite3 — runs all ops for a connection on one
+    # dedicated thread, so a single long-lived connection is safe to share
+    # across the worker task + API coroutines (no check_same_thread footgun).
+    "aiosqlite>=0.20,<0.21",
     "prometheus-fastapi-instrumentator>=7.0",
     "opentelemetry-distro>=0.48b0",
     "opentelemetry-exporter-otlp>=1.27.0",

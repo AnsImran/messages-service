@@ -18,6 +18,7 @@ class HealthResponse(BaseModel):
                 "app_name": "microservice_sms",
                 "app_version": "0.1.0",
                 "token_service_reachable": True,
+                "queue_worker_running": True,
             }
         },
     )
@@ -45,6 +46,15 @@ class HealthResponse(BaseModel):
         description=(
             "True if a probe call to the sibling token service succeeded "
             "during this health check."
+        ),
+        examples=[True],
+    )
+    queue_worker_running: bool = Field(
+        ...,
+        description=(
+            "True if the background SMS batch-queue worker task is alive. "
+            "False means queued batch messages are not being drained — the "
+            "overall status is reported as 'degraded'."
         ),
         examples=[True],
     )

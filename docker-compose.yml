@@ -22,9 +22,18 @@ services:
       # Service talks to the sibling token broker by its docker-network
       # hostname. Both need to share a network (see networks: below).
       TOKEN_SERVICE_URL: http://beetexting-token-service:8100/api/v1/token
+      # Durable SMS batch queue lives on the named volume below so queued +
+      # in-flight messages survive container recreation on every CI redeploy.
+      SMS_QUEUE_DB_PATH: /app/data/sms_queue.db
+    volumes:
+      - sms-queue-data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8200/api/v1/ping', timeout=3).status == 200 else sys.exit(1)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+volumes:
+  # Survives `docker compose up -d` / `down` (CI redeploys on every push).
+  sms-queue-data:

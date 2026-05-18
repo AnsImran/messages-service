@@ -24,6 +24,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY main.py ./
 COPY src/ ./src/
 
+# Durable SMS-queue location. A docker-compose named volume mounts over this
+# path in production; creating it here keeps plain `docker run` working too.
+RUN mkdir -p /app/data
+ENV SMS_QUEUE_DB_PATH=/app/data/sms_queue.db
+
 EXPOSE 8200
 
 # Bind 0.0.0.0 so Docker can route traffic to this container. Host-only

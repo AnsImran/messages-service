@@ -8,6 +8,7 @@ Creates and configures the FastAPI app with:
 - OpenAPI metadata.
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -21,6 +22,8 @@ from src.core.config import get_settings
 from src.core.exceptions import register_error_handlers
 from src.core.logging_config import setup_logging
 from src.services.beetexting_client import BeetextingClient
+from src.services.queue_repo import QueueRepo
+from src.services.queue_worker import sms_queue_worker
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +36,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         1. Configure logging.
         2. Create a shared httpx.AsyncClient (connection pooling).
         3. Wrap it in a BeetextingClient and stash both on app.state.
+        4. Open the durable SQLite queue (recovers crashed in-flight rows).
+        5. Start the single background SMS batch-queue worker task.
 
-    On shutdown:
-        1. Close the shared httpx.AsyncClient.
+    On shutdown (ordered):
+        1. Cancel the worker task and wait for it to stop.
+        2. Close the SQLite queue connection.
+        3. Close the shared httpx.AsyncClient.
     """
     settings = get_settings()
     setup_logging(level=settings.log_level, access_log_level=settings.access_log_level)
@@ -55,9 +62,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.http_client = http_client
     app.state.beetexting_client = beetexting_client
 
+    queue_repo = QueueRepo(settings.sms_queue_db_path)
+    await queue_repo.connect()
+    app.state.queue_repo = queue_repo
+    app.state.queue_worker_task = asyncio.create_task(
+        sms_queue_worker(app), name="sms_queue_worker"
+    )
+
     yield
 
     logger.info("=== %s shutting down ===", settings.app_name)
+    worker_task = app.state.queue_worker_task
+    worker_task.cancel()
+    await asyncio.gather(worker_task, return_exceptions=True)
+    await queue_repo.close()
     await http_client.aclose()
 
 

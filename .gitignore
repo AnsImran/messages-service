@@ -23,6 +23,12 @@ wheels/
 venv/
 ENV/
 
+# ── SMS queue (local SQLite + WAL sidecars) ─────────────────────────────────
+data/
+*.db
+*.db-wal
+*.db-shm
+
 # ── Test / coverage ─────────────────────────────────────────────────────────
 .coverage
 .coverage.*

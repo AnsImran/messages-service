@@ -9,9 +9,10 @@ Uses kroki.io (POST the mermaid source, get back a PNG). No Node / no
 headless Chrome / no extra system deps — just httpx, which is already a
 project dependency.
 
-Each PNG is named after the nearest ``##`` heading that sits above the
-fenced block in the README (slug-cased). If no heading precedes the block,
-the file is named ``diagram_<N>.png``.
+Each PNG is named after the nearest ``##`` or ``###`` heading that sits
+above the fenced block in the README (slug-cased). If two blocks resolve to
+the same name, later ones get a ``_2``, ``_3`` … suffix. If no heading
+precedes the block, the file is named ``diagram_<N>.png``.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ MERMAID_FENCE = re.compile(
     r"```mermaid\s*\n(?P<body>.*?)\n```",
     re.DOTALL,
 )
-HEADING = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
+HEADING = re.compile(r"^#{2,3}\s+(?P<title>.+?)\s*$", re.MULTILINE)
 SLUG_SAFE = re.compile(r"[^a-z0-9]+")
 
 
@@ -77,9 +78,13 @@ def main() -> int:
     print(f"writing PNGs to {OUTPUT_DIR.relative_to(REPO_ROOT)}/\n")
 
     rc = 0
+    seen: dict[str, int] = {}
     for index, block in enumerate(blocks, start=1):
         heading = nearest_heading_before(markdown, block.start())
         name = slugify(heading) if heading else f"diagram_{index}"
+        seen[name] = seen.get(name, 0) + 1
+        if seen[name] > 1:
+            name = f"{name}_{seen[name]}"
         out_path = OUTPUT_DIR / f"{name}.png"
 
         print(f"  [{index}/{len(blocks)}] {name}.png", end=" ... ", flush=True)
