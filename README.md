@@ -477,3 +477,60 @@ Negative-test hints:
 - Idempotency keys on `/sms/batch` (paced retries + backoff are now implemented)
 - Per-recipient personalised message bodies in a batch
 - Auto-restart/supervision of the queue worker (currently surfaced via `/health`; `restart: unless-stopped` + durable state is the recovery path)
+
+## Deployment & observability (EC2)
+
+Production runs as a Docker container on the shared EC2 host, deployed by
+GitHub Actions, observed by the shared Prometheus + Grafana + Tempo + Loki
+stack. Local dev is unaffected (see "Local end-to-end test" above).
+
+### Containerization
+
+- **`Dockerfile`** — `python:3.12-slim`; deps via
+  `uv sync --frozen --no-dev --no-install-project` from `pyproject.toml` +
+  `uv.lock`. Creates `/app/data` and sets `SMS_QUEUE_DB_PATH=
+  /app/data/sms_queue.db` so the durable queue lives on a writable path;
+  `CMD` is wrapped with `opentelemetry-instrument`. Healthcheck hits
+  `GET /api/v1/ping`.
+- **`docker-compose.yml`** references the CI-built GHCR image
+  `ghcr.io/ansimran/messages-service/sms-service:latest` with a `build:`
+  fallback. A **named volume** mounts over `/app/data` so the SQLite queue
+  (queued + in-flight messages) survives container restarts / redeploys —
+  this is what makes the at-least-once guarantee hold across deploys. **No
+  host port is published** (reached only via Docker DNS; host port 8200 on
+  EC2 is squatted by a `create-ticket` mis-mapping, so the SMS service
+  binds the container port only).
+- **`.dockerignore`** excludes `.env`, `credentials/`, tests, docs,
+  `.github/`.
+
+### CI/CD — `.github/workflows/ci.yml`
+
+On push to `main`: **test** (`compileall src main.py` + best-effort
+`pytest`) → **build-and-push** (GHCR, registry-cached) → **deploy** (SSH to
+EC2, `git reset --hard origin/main`, `docker login ghcr.io`,
+`docker compose pull && up -d`, `/api/v1/ping` check). Secrets:
+`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `GHCR_USER`, `GHCR_TOKEN`.
+Docs-only pushes skip via `paths-ignore`.
+
+### EC2 topology
+
+Container joins the external Docker network **`observability-net`**.
+Container name: **`sms-service`**, internal port **`8200`**. An EC2-side
+`docker-compose.override.yml` (gitignored, not in this repo) injects the
+`OTEL_*` env vars + `WLS_LOG_FILE` and joins that network. It reaches the
+sibling **`beetexting-token-service`** broker by Docker DNS for credentials.
+**Consumer:** the `active_worklist_notification_system` is the only caller;
+it now POSTs `/api/v1/sms/batch` (the durable queue), not the legacy
+`/api/v1/sms/send`.
+
+### Observability
+
+- **Phase 1 — metrics:** `/metrics` via `prometheus-fastapi-instrumentator`;
+  Prometheus scrape job / `OTEL_SERVICE_NAME` **`sms`**.
+- **Phase 2 — traces + logs:** `opentelemetry-instrument` auto-instruments
+  FastAPI + httpx; spans ship via OTLP → OTel Collector → **Tempo**. JSON
+  logs → `WLS_LOG_FILE` → **Promtail** → **Loki**;
+  `OTEL_PYTHON_LOG_CORRELATION=true` adds `otelTraceID` for trace ⇄ log
+  jumps. Explicit `opentelemetry-instrumentation-fastapi`/`-httpx`/
+  `-logging` are pinned in `pyproject.toml` (uv venvs ship without `pip`,
+  so `opentelemetry-bootstrap -a install` silently no-ops).
