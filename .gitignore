@@ -54,3 +54,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# E2E probe runtime logs (sms_send_probe writes one log per run here)
+tests/e2e/logs/
