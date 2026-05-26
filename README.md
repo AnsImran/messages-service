@@ -274,7 +274,7 @@ All configuration is loaded from environment variables (or a `.env` file in the 
 | Variable                                  | Default                | Description                                                                 |
 |-------------------------------------------|------------------------|-----------------------------------------------------------------------------|
 | `SMS_QUEUE_DB_PATH`                       | `/app/data/sms_queue.db` | SQLite file backing the durable queue. On a named volume in Docker; use e.g. `./data/sms_queue.db` locally. |
-| `SMS_INTER_MESSAGE_GAP_SECONDS`           | `1.0`                  | Gap the single worker sleeps after each send — the **global** pace across all concurrent batches. |
+| `SMS_INTER_MESSAGE_GAP_SECONDS`           | `1.5`                  | Gap the single worker sleeps after each send — the **global** pace across all concurrent batches. |
 | `SMS_MAX_ATTEMPTS`                        | `5`                    | Total attempts per recipient (initial + retries) before permanent failure.  |
 | `SMS_BACKOFF_BASE_SECONDS`                | `2.0`                  | Base for exponential retry backoff: `delay = base * factor**prior_attempts`. |
 | `SMS_BACKOFF_FACTOR`                      | `2.0`                  | Exponential growth factor for retry backoff.                                |

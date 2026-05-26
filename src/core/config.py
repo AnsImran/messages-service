@@ -103,7 +103,7 @@ class Settings(BaseSettings):
         ),
     )
     sms_inter_message_gap_seconds: float = Field(
-        default=1.0,
+        default=1.5,
         ge=0,
         le=60.0,
         description=(
